@@ -1,6 +1,6 @@
-# PDF to Markdown Converter
+# PDF OCR Conversion Tools
 
-Convert PDF documents to Markdown format using Qwen3-VL vision model via llama.cpp.
+Convert PDF documents to Markdown or XHTML format using Qwen3-VL vision model via llama.cpp.
 
 ## Features
 
@@ -9,6 +9,9 @@ Convert PDF documents to Markdown format using Qwen3-VL vision model via llama.c
 - Runs on AMD GPU with ROCm acceleration
 - Preserves document structure, headings, lists, and tables
 - Configurable DPI for image quality
+- Two output formats:
+  - **Markdown**: Clean, readable format for documentation
+  - **XHTML**: Properly formatted HTML with CSS styling for ebooks
 
 ## Prerequisites
 
@@ -46,8 +49,11 @@ uv pip install --upgrade pymupdf pillow requests
 ### Basic Usage
 
 ```bash
-# Convert PDF with Q8_0 quantization (default)
+# Convert PDF to Markdown with Q8_0 quantization (default)
 python3 pdf_to_markdown_llamacpp.py input.pdf output.md
+
+# Convert PDF to XHTML with Q8_0 quantization (default)
+python3 pdf_to_xhtml_llamacpp.py input.pdf output.xhtml
 ```
 
 ### Advanced Options
@@ -55,15 +61,19 @@ python3 pdf_to_markdown_llamacpp.py input.pdf output.md
 ```bash
 # Use Q4_K_M quantization (faster, less VRAM)
 python3 pdf_to_markdown_llamacpp.py document.pdf output.md --model Q4_K_M
+python3 pdf_to_xhtml_llamacpp.py document.pdf output.xhtml --model Q4_K_M
 
 # Use F16 quantization (best quality, more VRAM)
 python3 pdf_to_markdown_llamacpp.py document.pdf output.md --model F16
+python3 pdf_to_xhtml_llamacpp.py document.pdf output.xhtml --model F16
 
 # Increase DPI for better OCR quality
 python3 pdf_to_markdown_llamacpp.py document.pdf output.md --dpi 200
+python3 pdf_to_xhtml_llamacpp.py document.pdf output.xhtml --dpi 200
 
 # Lower DPI for faster processing
 python3 pdf_to_markdown_llamacpp.py document.pdf output.md --dpi 100
+python3 pdf_to_xhtml_llamacpp.py document.pdf output.xhtml --dpi 100
 ```
 
 ### Complete Example
@@ -72,8 +82,11 @@ python3 pdf_to_markdown_llamacpp.py document.pdf output.md --dpi 100
 # Enter your Docker container (example)
 docker exec -it <your-llama-container> /bin/bash
 
-# Convert a PDF document
+# Convert a PDF document to Markdown
 python3 pdf_to_markdown_llamacpp.py /path/to/book.pdf /path/to/output.md --model Q8_0 --dpi 150
+
+# Convert a PDF document to XHTML (for ebooks)
+python3 pdf_to_xhtml_llamacpp.py /path/to/book.pdf /path/to/output.xhtml --model Q8_0 --dpi 150
 ```
 
 ## Model Quantization Comparison
@@ -89,8 +102,10 @@ python3 pdf_to_markdown_llamacpp.py /path/to/book.pdf /path/to/output.md --model
 1. **PDF Conversion**: Converts each PDF page to PNG images at specified DPI using PyMuPDF
 2. **Server Startup**: Launches llama-server with Qwen3-VL model and mmproj file
 3. **OCR Processing**: Sends each image to the vision model via OpenAI-compatible API (`/v1/chat/completions`)
-4. **Text Extraction**: Vision model performs OCR and returns structured markdown
-5. **Markdown Generation**: Combines extracted text from all pages into a single markdown document
+4. **Text Extraction**: Vision model performs OCR and returns structured text
+5. **Format Generation**:
+   - **Markdown**: Combines extracted text into a single markdown document
+   - **XHTML**: Generates well-formed XHTML with proper CSS styling, paragraph structure, and HTML entity encoding
 6. **Cleanup**: Stops llama-server and removes temporary image files
 
 ### Technical Details
@@ -138,12 +153,15 @@ Both files must use the same quantization variant (Q4_K_M, Q8_0, or F16).
 
 ## Files
 
-- `pdf_to_markdown_llamacpp.py` - Main conversion script
+- `pdf_to_markdown_llamacpp.py` - PDF to Markdown conversion script
+- `pdf_to_xhtml_llamacpp.py` - PDF to XHTML conversion script (for ebooks)
 - `test_single_page.py` - Test script for debugging single page extraction
 - `debug_vision.py` - Low-level vision API testing tool
 - `README.md` - This file
 
 ## Command-Line Options
+
+### Markdown Conversion
 
 ```
 usage: pdf_to_markdown_llamacpp.py [-h] [--model {Q4_K_M,Q8_0,F16}] [--dpi DPI] input output
@@ -153,6 +171,24 @@ Convert PDF to Markdown using Qwen3-VL GGUF model
 positional arguments:
   input                 Input PDF file
   output                Output markdown file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --model {Q4_K_M,Q8_0,F16}
+                        Model quantization variant (default: Q8_0)
+  --dpi DPI             DPI for PDF conversion (default: 150)
+```
+
+### XHTML Conversion
+
+```
+usage: pdf_to_xhtml_llamacpp.py [-h] [--model {Q4_K_M,Q8_0,F16}] [--dpi DPI] input output
+
+Convert PDF to XHTML using Qwen3-VL GGUF model
+
+positional arguments:
+  input                 Input PDF file
+  output                Output XHTML file
 
 optional arguments:
   -h, --help            show this help message and exit
