@@ -10,6 +10,7 @@ Dependencies:
 Usage:
   python3 pdf_to_xhtml_llamacpp.py input.pdf output.xhtml
   python3 pdf_to_xhtml_llamacpp.py input.pdf output.xhtml --dpi 150 --model Q8_0
+  python3 pdf_to_xhtml_llamacpp.py input.pdf output.xhtml --pages "1-5,10-12"
 """
 
 import sys
@@ -156,15 +157,63 @@ class LlamaServer:
             return ""
 
 
-def pdf_to_images(pdf_path: Path, output_dir: Path, dpi: int = 150):
-    """Convert PDF pages to images"""
+def parse_page_range(page_spec: str, total_pages: int) -> list[int]:
+    """Parse page specification string into list of page numbers (0-indexed)
+
+    Examples:
+        "1-5" -> [0, 1, 2, 3, 4]
+        "1,3,5" -> [0, 2, 4]
+        "1-3,7,10-12" -> [0, 1, 2, 6, 9, 10, 11]
+    """
+    pages = set()
+
+    for part in page_spec.split(','):
+        part = part.strip()
+        if '-' in part:
+            # Range like "1-5"
+            start, end = part.split('-', 1)
+            start = int(start.strip())
+            end = int(end.strip())
+            if start < 1 or end > total_pages:
+                raise ValueError(f"Page range {start}-{end} out of bounds (1-{total_pages})")
+            if start > end:
+                raise ValueError(f"Invalid range {start}-{end}: start > end")
+            pages.update(range(start - 1, end))  # Convert to 0-indexed
+        else:
+            # Single page like "3"
+            page = int(part.strip())
+            if page < 1 or page > total_pages:
+                raise ValueError(f"Page {page} out of bounds (1-{total_pages})")
+            pages.add(page - 1)  # Convert to 0-indexed
+
+    return sorted(list(pages))
+
+
+def pdf_to_images(pdf_path: Path, output_dir: Path, dpi: int = 150, pages: str = None):
+    """Convert PDF pages to images
+
+    Args:
+        pdf_path: Path to input PDF
+        output_dir: Directory to save images
+        dpi: Resolution for conversion
+        pages: Page specification (e.g., "1-5", "1,3,5", "1-3,7,10-12") or None for all pages
+    """
     print(f"\nConverting PDF to images (DPI: {dpi})...")
 
     doc = fitz.open(pdf_path)
     total_pages = len(doc)
+
+    # Determine which pages to process
+    if pages:
+        page_numbers = parse_page_range(pages, total_pages)
+        print(f"  Processing {len(page_numbers)} of {total_pages} pages: {pages}")
+    else:
+        page_numbers = list(range(total_pages))
+        print(f"  Processing all {total_pages} pages")
+
     image_files = []
 
-    for page_num in range(total_pages):
+    for idx, page_num in enumerate(page_numbers, start=1):
         page = doc[page_num]
         zoom = dpi / 72
         mat = fitz.Matrix(zoom, zoom)
@@ -173,7 +222,7 @@ def pdf_to_images(pdf_path: Path, output_dir: Path, dpi: int = 150):
         output_file = output_dir / f"page_{page_num + 1:04d}.png"
         pix.save(output_file)
         image_files.append(output_file)
-        print(f"  Page {page_num + 1}/{total_pages} converted")
+        print(f"  Page {page_num + 1}/{total_pages} converted ({idx}/{len(page_numbers)})")
 
     doc.close()
     return image_files
@@ -367,7 +416,7 @@ def setup_logger(output_path: Path) -> logging.Logger:
     return logger
 
 
-def pdf_to_xhtml(pdf_path: Path, output_path: Path, model_variant: str = "Q8_0", dpi: int = 150):
+def pdf_to_xhtml(pdf_path: Path, output_path: Path, model_variant: str = "Q8_0", dpi: int = 150, pages: str = None):
     """Convert PDF to XHTML using Qwen3-VL GGUF"""
 
     # Setup logging
@@ -379,6 +428,7 @@ def pdf_to_xhtml(pdf_path: Path, output_path: Path, model_variant: str = "Q8_0",
     logger.info(f"Output XHTML: {output_path}")
     logger.info(f"Model variant: {model_variant}")
     logger.info(f"DPI: {dpi}")
+    logger.info(f"Pages: {pages if pages else 'all'}")
     logger.info(f"Timestamp: {datetime.now().isoformat()}")
 
     # Determine model paths
@@ -410,7 +460,7 @@ def pdf_to_xhtml(pdf_path: Path, output_path: Path, model_variant: str = "Q8_0",
     try:
         # Convert PDF to images
         logger.info("Starting PDF to image conversion...")
-        image_files = pdf_to_images(pdf_path, temp_dir, dpi=dpi)
+        image_files = pdf_to_images(pdf_path, temp_dir, dpi=dpi, pages=pages)
         logger.info(f"Converted {len(image_files)} pages to images")
 
         # Start llama-server
@@ -515,6 +565,11 @@ Examples:
 
   # Custom DPI
   python3 pdf_to_xhtml_llamacpp.py document.pdf output.xhtml --dpi 200
+
+  # Extract specific pages
+  python3 pdf_to_xhtml_llamacpp.py document.pdf output.xhtml --pages "1-5"
+  python3 pdf_to_xhtml_llamacpp.py document.pdf output.xhtml --pages "1,3,5,10"
+  python3 pdf_to_xhtml_llamacpp.py document.pdf output.xhtml --pages "1-3,7,10-12"
         """
     )
 
@@ -533,6 +588,12 @@ Examples:
         default=150,
         help="DPI for PDF conversion (default: 150)"
     )
+    parser.add_argument(
+        "--pages",
+        type=str,
+        default=None,
+        help='Pages to extract (e.g., "1-5", "1,3,5", "1-3,7,10-12"). Default: all pages'
+    )
 
     args = parser.parse_args()
 
@@ -547,7 +608,7 @@ Examples:
         print(f"✗ Input must be a PDF file: {input_path}")
         sys.exit(1)
 
-    pdf_to_xhtml(input_path, output_path, model_variant=args.model, dpi=args.dpi)
+    pdf_to_xhtml(input_path, output_path, model_variant=args.model, dpi=args.dpi, pages=args.pages)
 
 
 if __name__ == "__main__":

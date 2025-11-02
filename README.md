@@ -79,6 +79,11 @@ python3 pdf_to_xhtml_llamacpp.py document.pdf output.xhtml --dpi 200
 # Lower DPI for faster processing
 python3 pdf_to_markdown_llamacpp.py document.pdf output.md --dpi 100
 python3 pdf_to_xhtml_llamacpp.py document.pdf output.xhtml --dpi 100
+
+# Extract specific pages only (XHTML conversion)
+python3 pdf_to_xhtml_llamacpp.py document.pdf output.xhtml --pages "1-5"
+python3 pdf_to_xhtml_llamacpp.py document.pdf output.xhtml --pages "1,3,5,10"
+python3 pdf_to_xhtml_llamacpp.py document.pdf output.xhtml --pages "1-3,7,10-12"
 ```
 
 ### Complete Example
@@ -214,7 +219,7 @@ optional arguments:
 ### XHTML Conversion
 
 ```
-usage: pdf_to_xhtml_llamacpp.py [-h] [--model {Q4_K_M,Q8_0,F16}] [--dpi DPI] input output
+usage: pdf_to_xhtml_llamacpp.py [-h] [--model {Q4_K_M,Q8_0,F16}] [--dpi DPI] [--pages PAGES] input output
 
 Convert PDF to XHTML using Qwen3-VL GGUF model
 
@@ -227,6 +232,7 @@ optional arguments:
   --model {Q4_K_M,Q8_0,F16}
                         Model quantization variant (default: Q8_0)
   --dpi DPI             DPI for PDF conversion (default: 150)
+  --pages PAGES         Pages to extract (e.g., "1-5", "1,3,5", "1-3,7,10-12"). Default: all pages
 ```
 
 ## License
