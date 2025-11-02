@@ -12,6 +12,11 @@ Convert PDF documents to Markdown or XHTML format using Qwen3-VL vision model vi
 - Two output formats:
   - **Markdown**: Clean, readable format for documentation
   - **XHTML**: Properly formatted HTML with CSS styling for ebooks
+- Comprehensive logging for XHTML conversion:
+  - Automatic log file creation (`.log` file alongside output)
+  - Per-page processing status and statistics
+  - Error tracking with full tracebacks
+  - Inline error markers in output for failed pages
 
 ## Prerequisites
 
@@ -106,7 +111,8 @@ python3 pdf_to_xhtml_llamacpp.py /path/to/book.pdf /path/to/output.xhtml --model
 5. **Format Generation**:
    - **Markdown**: Combines extracted text into a single markdown document
    - **XHTML**: Generates well-formed XHTML with proper CSS styling, paragraph structure, and HTML entity encoding
-6. **Cleanup**: Stops llama-server and removes temporary image files
+6. **Logging** (XHTML only): Comprehensive logging to `.log` file with timestamps, per-page status, and error details
+7. **Cleanup**: Stops llama-server and removes temporary image files
 
 ### Technical Details
 
@@ -115,6 +121,32 @@ The script uses llama.cpp's OpenAI-compatible chat completions API with vision s
 - Sent via `/v1/chat/completions` endpoint with `image_url` content type
 - Custom OCR prompt instructs model to extract visible text only
 - Temperature set to 0.1 for consistent, deterministic output
+
+### XHTML Logging
+
+The XHTML converter automatically creates a detailed log file alongside the output:
+
+**Log file location**: Same directory as output file, with `.log` extension (e.g., `output.xhtml` → `output.log`)
+
+**Log contents include**:
+- Start/end timestamps
+- Input/output file paths and conversion parameters
+- Model and MMProj file paths
+- PDF to image conversion progress
+- llama-server lifecycle events (start/stop)
+- Per-page OCR status:
+  - Processing start time
+  - Number of characters extracted
+  - Success or failure status
+  - Detailed error messages with tracebacks
+- Final statistics: successful vs failed pages
+- Output file size
+
+**Error handling**:
+- If a page fails to process, an error marker is inserted into the XHTML output at that location
+- Example: `Page 5 failed to process: Connection timeout`
+- The conversion continues with remaining pages instead of aborting
+- All errors are logged with full details in the log file
 
 ## Troubleshooting
 
